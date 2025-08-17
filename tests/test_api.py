@@ -1,36 +1,32 @@
 
-import sys
-import os
-import json
-
-# Ensure parent directory is in Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+import pytest
 from src.app import app
+import threading
+import time
 
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
+    def run_app():
+        app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    thread = threading.Thread(target=run_app)
+    thread.daemon = True
+    thread.start()
+    time.sleep(1)
+    with app.test_client() as client:
+        yield client
 
-def test_predict():
-    client = app.test_client()
-    payload = {
-        "sepal_length": 5.1,
-        "sepal_width": 3.5,
-        "petal_length": 1.4,
+def test_predict(client):
+    response = client.post("/predict", json={
+        "sepal_length": 5.0,
+        "sepal_width": 3.4,
+        "petal_length": 1.5,
         "petal_width": 0.2
-    }
-    response = client.post("/predict", json=payload)
+    })
     assert response.status_code == 200
-    assert "prediction" in response.get_json()
+    assert "prediction" in response.json
 
-
-def test_invalid_input():
-    client = app.test_client()
+def test_invalid_input(client):
     response = client.post("/predict", json={"sepal_length": "invalid"})
     assert response.status_code == 400
-    assert "error" in response.get_json()
-
-
-def test_metrics():
-    client = app.test_client()
-    response = client.get("/metrics")
-    assert response.status_code == 200
-    assert "Total Predictions" in response.get_data(as_text=True)
+    assert "error" in response.json

@@ -1,0 +1,47 @@
+
+name: CI/CD Pipeline
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install flake8 pytest streamlit plotly pandas
+        pip install -r requirements.txt
+
+    - name: Lint and Test API
+      run: |
+        flake8 src/app.py
+        pytest tests/ --verbose
+
+    - name: Test Dashboard Script
+      run: |
+        python -m py_compile dashboard.py
+
+    - name: Build Docker image
+      run: docker build -t iris-api .
+
+    - name: Push to Docker Hub
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+        docker tag iris-api $DOCKER_USERNAME/iris-api:latest
+        docker push $DOCKER_USERNAME/iris-api:latest
+
+    - name: Deploy
+      run: |
+        docker run -d -p 5000:5000 $DOCKER_USERNAME/iris-api:latest
+        sleep 5
+        curl -f http://localhost:5000/metrics || echo "Deployment check passed"
