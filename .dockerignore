@@ -1,7 +1,0 @@
-
-data/
-mlruns/
-.git/
-.github/
-*.md
-.dvc/
