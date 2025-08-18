@@ -5,3 +5,11 @@ scikit-learn
 joblib
 pydantic
 prometheus_client
+flask
+pandas
+scikit-learn
+joblib
+pydantic
+prometheus_client
+plotly
+streamlit
